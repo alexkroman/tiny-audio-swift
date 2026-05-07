@@ -1,0 +1,3 @@
+{
+  "git.repositoryScanIgnoredFolders": [".build", ".swiftpm", "node_modules"]
+}
