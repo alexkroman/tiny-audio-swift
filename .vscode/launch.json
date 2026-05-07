@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:tiny-audio-swift}/swift",
+            "name": "Debug tiny-audio-swift-eval (swift)",
+            "target": "tiny-audio-swift-eval",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug tiny-audio-swift-eval (swift)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:tiny-audio-swift}/swift",
+            "name": "Release tiny-audio-swift-eval (swift)",
+            "target": "tiny-audio-swift-eval",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release tiny-audio-swift-eval (swift)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:tiny-audio-swift}/swift",
+            "name": "Debug tiny-audio-vad-bench (swift)",
+            "target": "tiny-audio-vad-bench",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug tiny-audio-vad-bench (swift)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:tiny-audio-swift}/swift",
+            "name": "Release tiny-audio-vad-bench (swift)",
+            "target": "tiny-audio-vad-bench",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release tiny-audio-vad-bench (swift)"
+        }
+    ]
+}

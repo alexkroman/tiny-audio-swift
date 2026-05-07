@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Swift / SPM
+.build/
+.swiftpm/
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+# Eval outputs (timestamped runs)
+swift/outputs/
