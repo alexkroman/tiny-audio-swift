@@ -11,7 +11,7 @@ app = typer.Typer(help="MLX bundle build utilities", no_args_is_help=True)
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DECODER_CACHE = _PROJECT_ROOT / ".cache" / "decoder-mlx"
 _DEFAULT_BUNDLE_DIR = _PROJECT_ROOT / "swift/Sources/TinyAudio/Resources/Model"
-_STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-4bit"
+_STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-8bit"
 _DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio-embedded"
 
 
@@ -44,7 +44,7 @@ def _resolve_default_decoder(projector: str) -> str:
     sanitized = projector.replace("/", "--")
     cache_path = _DEFAULT_DECODER_CACHE / sanitized
     if not cache_path.is_dir():
-        from scripts.mlx.convert_decoder import convert_decoder
+        from scripts.bundle.convert_decoder import convert_decoder
 
         typer.echo(f"No cached decoder for {projector}; running convert-decoder...")
         convert_decoder(checkpoint=projector, out_dir=cache_path, q_bits=8)
@@ -95,7 +95,7 @@ def convert_decoder_cmd(
     ] = "affine",
 ) -> None:
     """Extract the fine-tuned LM from a tiny-audio checkpoint and convert to MLX 4-bit (local)."""
-    from scripts.mlx.convert_decoder import convert_decoder
+    from scripts.bundle.convert_decoder import convert_decoder
 
     convert_decoder(
         checkpoint=checkpoint,
@@ -140,7 +140,7 @@ def build_bundle_cmd(
     ] = 64,
 ) -> None:
     """Assemble the Swift SDK's MLX bundle from projector + decoder + upstream encoder."""
-    from scripts.mlx.build_bundle import build_bundle
+    from scripts.bundle.build_bundle import build_bundle
 
     if decoder is None:
         decoder = _resolve_default_decoder(projector)
@@ -154,3 +154,7 @@ def build_bundle_cmd(
         q_bits=q_bits,
         q_group_size=q_group_size,
     )
+
+
+if __name__ == "__main__":
+    app()

@@ -1,17 +1,21 @@
 [project]
 name = "tiny-audio-swift-scripts"
 version = "0.0.0"
-description = "Python helpers for tiny-audio-swift: MLX bundle publishing, Silero VAD CoreML conversion."
-requires-python = ">=3.10"
+description = "Python helpers for tiny-audio-swift: build a local MLX bundle from a tiny-audio checkpoint."
+requires-python = ">=3.10,<3.13"
 dependencies = [
   "mlx",
   "mlx-audio",
+  "mlx-lm",
   "huggingface_hub",
   "numpy",
   "torch",
   "soundfile",
   "coremltools",
   "typer",
+  # Reference Python implementation. Used by scripts/bundle/convert_decoder.py
+  # to extract fine-tuned LM weights from projector checkpoints.
+  "tiny-audio @ git+https://github.com/alexkroman/tiny-audio.git@main",
 ]
 
 [build-system]
@@ -20,7 +24,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["scripts*", "tiny_audio*"]
+include = ["scripts*"]
 
 # Poetry compatibility: tell `poetry install` to skip packaging this repo
 # itself and just install the dependencies. `pip install -e .` and `uv sync`

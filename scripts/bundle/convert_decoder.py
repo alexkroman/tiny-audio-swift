@@ -42,7 +42,6 @@ def convert_decoder(
     quantize: bool = True,
 ) -> None:
     from mlx_lm import convert as mlx_lm_convert
-
     from tiny_audio.asr_modeling import ASRModel
 
     print(f"Loading tiny-audio checkpoint from {checkpoint}...")
