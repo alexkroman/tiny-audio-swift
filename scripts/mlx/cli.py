@@ -6,12 +6,11 @@ from typing import Annotated, Optional
 
 import typer
 
-from scripts.utils import get_project_root
-
 app = typer.Typer(help="MLX bundle build utilities", no_args_is_help=True)
 
-_DEFAULT_DECODER_CACHE = get_project_root() / ".cache" / "decoder-mlx"
-_DEFAULT_BUNDLE_DIR = get_project_root() / "swift/Sources/TinyAudio/Resources/Model"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_DECODER_CACHE = _PROJECT_ROOT / ".cache" / "decoder-mlx"
+_DEFAULT_BUNDLE_DIR = _PROJECT_ROOT / "swift/Sources/TinyAudio/Resources/Model"
 _STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-4bit"
 _DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio-embedded"
 

@@ -1,0 +1,29 @@
+# Install with: pre-commit install
+#
+# `swift-test` is the slow hook (multi-minute first build because of MLX-Swift).
+# To move it to pre-push instead, change its `stages` to `[pre-push]` and run
+# `pre-commit install --hook-type pre-push`.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: swift-format
+        name: swift-format lint
+        entry: xcrun swift-format lint --strict --recursive swift/Sources swift/Tests
+        language: system
+        types: [swift]
+        pass_filenames: false
+
+      - id: swift-test
+        name: swift test
+        entry: bash -c 'cd swift && swift test'
+        language: system
+        types: [swift]
+        pass_filenames: false

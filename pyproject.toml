@@ -1,0 +1,36 @@
+[project]
+name = "tiny-audio-swift-scripts"
+version = "0.0.0"
+description = "Python helpers for tiny-audio-swift: MLX bundle publishing, Silero VAD CoreML conversion."
+requires-python = ">=3.10"
+dependencies = [
+  "mlx",
+  "mlx-audio",
+  "huggingface_hub",
+  "numpy",
+  "torch",
+  "soundfile",
+  "coremltools",
+  "typer",
+]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*", "tiny_audio*"]
+
+# Poetry compatibility: tell `poetry install` to skip packaging this repo
+# itself and just install the dependencies. `pip install -e .` and `uv sync`
+# still build via the [build-system] above.
+[tool.poetry]
+package-mode = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+extend-select = ["I"]
