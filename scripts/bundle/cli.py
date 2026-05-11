@@ -6,13 +6,12 @@ from typing import Annotated, Optional
 
 import typer
 
-from scripts.utils import get_project_root
-
 app = typer.Typer(help="MLX bundle build utilities", no_args_is_help=True)
 
-_DEFAULT_DECODER_CACHE = get_project_root() / ".cache" / "decoder-mlx"
-_DEFAULT_BUNDLE_DIR = get_project_root() / "swift/Sources/TinyAudio/Resources/Model"
-_STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-4bit"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_DECODER_CACHE = _PROJECT_ROOT / ".cache" / "decoder-mlx"
+_DEFAULT_BUNDLE_DIR = _PROJECT_ROOT / "swift/Sources/TinyAudio/Resources/Model"
+_STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-8bit"
 _DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio-embedded"
 
 
@@ -45,7 +44,7 @@ def _resolve_default_decoder(projector: str) -> str:
     sanitized = projector.replace("/", "--")
     cache_path = _DEFAULT_DECODER_CACHE / sanitized
     if not cache_path.is_dir():
-        from scripts.mlx.convert_decoder import convert_decoder
+        from scripts.bundle.convert_decoder import convert_decoder
 
         typer.echo(f"No cached decoder for {projector}; running convert-decoder...")
         convert_decoder(checkpoint=projector, out_dir=cache_path, q_bits=8)
@@ -96,7 +95,7 @@ def convert_decoder_cmd(
     ] = "affine",
 ) -> None:
     """Extract the fine-tuned LM from a tiny-audio checkpoint and convert to MLX 4-bit (local)."""
-    from scripts.mlx.convert_decoder import convert_decoder
+    from scripts.bundle.convert_decoder import convert_decoder
 
     convert_decoder(
         checkpoint=checkpoint,
@@ -141,7 +140,7 @@ def build_bundle_cmd(
     ] = 64,
 ) -> None:
     """Assemble the Swift SDK's MLX bundle from projector + decoder + upstream encoder."""
-    from scripts.mlx.build_bundle import build_bundle
+    from scripts.bundle.build_bundle import build_bundle
 
     if decoder is None:
         decoder = _resolve_default_decoder(projector)
@@ -155,3 +154,50 @@ def build_bundle_cmd(
         q_bits=q_bits,
         q_group_size=q_group_size,
     )
+
+
+@app.command("push-bundle")
+def push_bundle_cmd(
+    projector: Annotated[
+        str,
+        typer.Option(
+            "--projector",
+            "-p",
+            help="HF repo id of the projector this bundle was built from (used in the README).",
+        ),
+    ],
+    repo: Annotated[
+        str,
+        typer.Option("--repo", help="Target HF repo id (model)."),
+    ] = "mazesmazes/tiny-audio-swift-bundle",
+    bundle_dir: Annotated[
+        Path,
+        typer.Option("--bundle-dir", help="Local bundle directory to upload."),
+    ] = _DEFAULT_BUNDLE_DIR,
+    private: Annotated[
+        bool,
+        typer.Option(
+            "--private",
+            help="Create the repo as private if it doesn't exist (default: public).",
+        ),
+    ] = False,
+    commit_message: Annotated[
+        Optional[str],
+        typer.Option("--commit-message", help="HF commit message."),
+    ] = None,
+) -> None:
+    """Push the assembled Swift MLX bundle to a HuggingFace model repo."""
+    from scripts.bundle.push_bundle import push_bundle
+
+    msg = commit_message or f"Update bundle from {projector}"
+    push_bundle(
+        bundle_dir=bundle_dir,
+        repo=repo,
+        projector_repo=projector,
+        private=private,
+        commit_message=msg,
+    )
+
+
+if __name__ == "__main__":
+    app()
