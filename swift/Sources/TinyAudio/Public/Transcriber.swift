@@ -55,22 +55,38 @@ public actor Transcriber {
 
   // MARK: - Public factory
 
-  /// Load the bundled model and return a warmed-up `Transcriber`.
+  /// Files we expect the ASR repo to provide. Presence-checked before each load.
+  private static let asrModelFiles: [String] = [
+    "config.json",
+    "encoder.safetensors",
+    "decoder.safetensors",
+    "decoder_config.json",
+    "projector.safetensors",
+    "tokenizer.json",
+    "tokenizer_config.json",
+  ]
+
+  /// HuggingFace repo holding the ASR weights for this version of TinyAudio.
+  private static let asrRepo = "mazesmazes/tiny-audio-swift-bundle"
+
+  /// Load the ASR model and return a warmed-up `Transcriber`.
   ///
-  /// Reads weights directly from the SDK's resource bundle, then runs a
-  /// short synthetic warmup at 1 s / 5 s / 15 s of audio to JIT-compile
-  /// Metal kernels for the shapes most common in real ASR.
-  public static func load() async throws -> Transcriber {
-    guard let bundleURL = Bundle.module.url(forResource: "Model", withExtension: nil) else {
-      throw TinyAudioError.mlxModuleLoadFailed(
-        name: "bundled model",
-        underlying: AnyError(
-          ConfigError.invalidJSON(
-            "Resources/Model is missing from the SDK bundle"
-          ))
-      )
-    }
-    return try await load(modelDirectory: bundleURL)
+  /// On first call, downloads the model bundle from HuggingFace into
+  /// `~/Library/Application Support/TinyAudio/Models/`; subsequent calls
+  /// hit the cache. Reports progress through `progress` if provided. After
+  /// the weights are loaded, runs a short synthetic warmup at 1 s / 5 s /
+  /// 15 s of audio to JIT-compile Metal kernels for the shapes most common
+  /// in real ASR.
+  public static func load(
+    progress: (@Sendable (LoadProgress) -> Void)? = nil
+  ) async throws -> Transcriber {
+    let dir = try await ModelCache.ensureDownloaded(
+      repo: Self.asrRepo,
+      expectedFiles: Self.asrModelFiles,
+      progress: progress
+    )
+    progress?(.loading)
+    return try await load(modelDirectory: dir)
   }
 
   /// Load a model from an on-disk directory and return a warmed-up `Transcriber`.
@@ -427,25 +443,6 @@ extension Transcriber {
     // tokens are context-sensitive — `decode([t1]) + decode([t2])` is not
     // equal to `decode([t1, t2])`, so we cannot accumulate per-token decodes.
     return pipeline.tokenizer.decode(tokens: accumulatedInts)
-  }
-}
-
-extension Transcriber {
-  /// Return a ``ChatSession`` that reuses the same Qwen3 decoder + tokenizer
-  /// already loaded for ASR. No extra weights are loaded.
-  ///
-  /// The returned session shares the underlying `Qwen3Model` instance with the
-  /// transcriber. Calls to `chat(...)` and `transcribe(...)` are safe when
-  /// interleaved sequentially, but must not run concurrently — both paths
-  /// allocate their own KV cache but operate on the same model parameters and
-  /// would corrupt each other's decode state if dispatched in parallel.
-  public func makeChatSession() -> ChatSession {
-    ChatSession(
-      decoder: pipeline.decoder,
-      tokenizer: pipeline.tokenizer,
-      numDecoderLayers: pipeline.numDecoderLayers,
-      eosTokenIds: pipeline.eosTokenIds
-    )
   }
 }
 
