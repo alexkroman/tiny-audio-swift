@@ -27,3 +27,4 @@ repos:
         language: system
         types: [swift]
         pass_filenames: false
+        stages: [pre-push]
