@@ -46,3 +46,37 @@ def _render_readme(bundle_dir: Path, projector_repo: str) -> str:
         "## Usage\n"
         "Loaded automatically by tiny-audio-swift's `Transcriber`.\n"
     )
+
+
+def push_bundle(
+    *,
+    bundle_dir: Path,
+    repo: str,
+    projector_repo: str,
+    private: bool,
+    commit_message: str,
+) -> None:
+    """Validate the bundle, render+write README, ensure the repo exists, upload.
+
+    Auth comes from `huggingface_hub`'s default token resolution
+    (`HF_TOKEN` env var or `huggingface-cli login` credentials).
+    """
+    from huggingface_hub import HfApi
+
+    if not bundle_dir.is_dir():
+        raise SystemExit(f"Bundle directory not found: {bundle_dir}")
+    if not (bundle_dir / "manifest.json").exists():
+        raise SystemExit(f"{bundle_dir} has no manifest.json — run `ta mlx build-bundle` first.")
+
+    readme = _render_readme(bundle_dir, projector_repo)
+    (bundle_dir / "README.md").write_text(readme)
+
+    api = HfApi()
+    api.create_repo(repo, repo_type="model", private=private, exist_ok=True)
+    api.upload_folder(
+        folder_path=str(bundle_dir),
+        repo_id=repo,
+        repo_type="model",
+        commit_message=commit_message,
+    )
+    print(f"Pushed to https://huggingface.co/{repo}")
