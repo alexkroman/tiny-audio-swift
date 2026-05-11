@@ -90,7 +90,6 @@ public actor MicrophoneTranscriber {
   // MARK: - Private state
 
   private let transcriber: Transcriber
-  private let config: VADConfig
   private let vad: SileroVAD
   private let streamer: VADStreamer
   private let engine: AVAudioEngine = AVAudioEngine()
@@ -122,7 +121,6 @@ public actor MicrophoneTranscriber {
   ///   for microphone permission; call `start()` for that.
   public init(transcriber: Transcriber, vad config: VADConfig = .default) throws {
     self.transcriber = transcriber
-    self.config = config
     self.vad = try SileroVAD()
     self.streamer = VADStreamer(vad: self.vad, config: config)
     // Reserve room for ~2 typical tap buffers (8192 samples) so the first

@@ -54,18 +54,4 @@ enum Processor {
     return PromptParts(prefixIds: prefixIds, suffixIds: suffixIds)
   }
 
-  /// Render the full `input_ids` tensor with N `<audio>` placeholders by
-  /// concatenating `buildPromptParts(...).prefixIds`, an audio-id run, and
-  /// `.suffixIds`. Returns the result as `MLXArray[1, T]` of Int32.
-  static func buildPromptInputIds(
-    tokenizer: any Tokenizer,
-    numAudioTokens: Int,
-    systemPrompt: String? = nil
-  ) throws -> MLXArray {
-    let parts = buildPromptParts(tokenizer: tokenizer, systemPrompt: systemPrompt)
-    let audioId = tokenizer.convertTokenToId(audioToken)!
-    let audioRun = [Int32](repeating: Int32(audioId), count: numAudioTokens)
-    let all = parts.prefixIds + audioRun + parts.suffixIds
-    return MLXArray(all).expandedDimensions(axis: 0)
-  }
 }

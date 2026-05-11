@@ -76,14 +76,4 @@ struct LogMelSpectrogram {
     return MLXArray(w)
   }
 
-  /// CPU-friendly variant: returns the flat float array + shape so tests
-  /// can compare without forcing Metal eval indirectly. Internally this
-  /// still goes through MLX (Metal) because mlx-audio-swift's mel is
-  /// MLX-based; the caller pays one eval at the boundary.
-  func computeFloats(_ samples: [Float]) -> ([Float], shape: [Int]) {
-    let mel = compute(samples)
-    MLX.eval(mel)
-    let floats = mel.asArray(Float.self)
-    return (floats, shape: mel.shape)
-  }
 }

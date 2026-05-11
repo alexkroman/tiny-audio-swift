@@ -38,6 +38,7 @@ let package = Package(
             exclude: [
                 "Vendored/Qwen3/LICENSE",
                 "Vendored/Qwen3/UPSTREAM.md",
+                "Resources/Model",
             ],
             resources: [
                 .copy("Resources/silero_vad.mlpackage"),

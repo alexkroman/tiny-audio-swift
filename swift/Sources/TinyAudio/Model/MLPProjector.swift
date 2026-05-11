@@ -27,13 +27,6 @@ final class MLPProjector: Module, UnaryLayer {
     super.init()
   }
 
-  /// Output token count given an input frame count.
-  ///
-  /// Matches the Python formula: `(input_length - k) // k + 1`
-  func outputLength(_ inputLength: Int) -> Int {
-    return (inputLength - poolStride) / poolStride + 1
-  }
-
   func callAsFunction(_ x: MLXArray) -> MLXArray {
     // x: [B, T, D]
     let batch = x.dim(0)
