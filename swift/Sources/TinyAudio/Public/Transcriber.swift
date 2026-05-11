@@ -61,9 +61,7 @@ public actor Transcriber {
   /// short synthetic warmup at 1 s / 5 s / 15 s of audio to JIT-compile
   /// Metal kernels for the shapes most common in real ASR.
   public static func load() async throws -> Transcriber {
-
-    // 1. Resolve bundled model directory.
-    guard let bundle = Bundle.module.url(forResource: "Model", withExtension: nil) else {
+    guard let bundleURL = Bundle.module.url(forResource: "Model", withExtension: nil) else {
       throw TinyAudioError.mlxModuleLoadFailed(
         name: "bundled model",
         underlying: AnyError(
@@ -72,9 +70,19 @@ public actor Transcriber {
           ))
       )
     }
+    return try await load(modelDirectory: bundleURL)
+  }
+
+  /// Load a model from an on-disk directory and return a warmed-up `Transcriber`.
+  ///
+  /// The caller is responsible for providing a directory containing the model
+  /// artifacts (`config.json`, `encoder.safetensors`, `projector.safetensors`,
+  /// `decoder.safetensors`, `decoder_config.json`, `tokenizer.json`,
+  /// `tokenizer_config.json`).
+  internal static func load(modelDirectory: URL) async throws -> Transcriber {
 
     // 2. Read bundle config.json.
-    let configURL = bundle.appendingPathComponent("config.json")
+    let configURL = modelDirectory.appendingPathComponent("config.json")
     let configData = try Data(contentsOf: configURL)
     guard let config = try JSONSerialization.jsonObject(with: configData) as? [String: Any] else {
       throw TinyAudioError.mlxModuleLoadFailed(
@@ -106,7 +114,7 @@ public actor Transcriber {
         quantize(model: encoder, groupSize: groupSize, bits: bits)
       }
       let weights = Self.castWeightsForCompute(
-        try MLX.loadArrays(url: bundle.appendingPathComponent("encoder.safetensors"))
+        try MLX.loadArrays(url: modelDirectory.appendingPathComponent("encoder.safetensors"))
       )
       try encoder.update(parameters: ModuleParameters.unflattened(weights), verify: .all)
     } catch let e as TinyAudioError {
@@ -123,7 +131,7 @@ public actor Transcriber {
       }
       projector = try MLPProjector(dict: projConfigDict)
       let weights = Self.castWeightsForCompute(
-        try MLX.loadArrays(url: bundle.appendingPathComponent("projector.safetensors"))
+        try MLX.loadArrays(url: modelDirectory.appendingPathComponent("projector.safetensors"))
       )
       try projector.update(parameters: ModuleParameters.unflattened(weights), verify: .all)
     } catch let e as TinyAudioError {
@@ -142,7 +150,7 @@ public actor Transcriber {
     let numDecoderLayers: Int
     let vocabSize: Int
     do {
-      let decoderConfigURL = bundle.appendingPathComponent("decoder_config.json")
+      let decoderConfigURL = modelDirectory.appendingPathComponent("decoder_config.json")
       let decoderConfigData = try Data(contentsOf: decoderConfigURL)
       let qwenConfig = try JSONDecoder().decode(Qwen3Configuration.self, from: decoderConfigData)
       // Optional decode — fp16 (unquantized) bundles omit the block entirely.
@@ -155,7 +163,7 @@ public actor Transcriber {
         quantize(model: decoder, groupSize: q.groupSize, bits: q.bits)
       }
       let rawWeights = Self.castWeightsForCompute(
-        try MLX.loadArrays(url: bundle.appendingPathComponent("decoder.safetensors"))
+        try MLX.loadArrays(url: modelDirectory.appendingPathComponent("decoder.safetensors"))
       )
       // sanitize strips lm_head.weight when tieWordEmbeddings=true.
       let weights = decoder.sanitize(weights: rawWeights)
@@ -171,7 +179,7 @@ public actor Transcriber {
     //    at runtime by the Python pipeline (ASRModel._init_tokenizer). We mirror
     //    that here by patching `added_tokens` before constructing the tokenizer,
     //    matching ProcessorTests.swift's approach.
-    let tokenizer = try await loadTokenizerWithAudioToken(directory: bundle)
+    let tokenizer = try await loadTokenizerWithAudioToken(directory: modelDirectory)
 
     // 9. Resolve audio token ID.
     guard let audioTokenIdInt = tokenizer.convertTokenToId(Processor.audioToken) else {
