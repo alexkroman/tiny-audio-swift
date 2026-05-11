@@ -156,5 +156,48 @@ def build_bundle_cmd(
     )
 
 
+@app.command("push-bundle")
+def push_bundle_cmd(
+    projector: Annotated[
+        str,
+        typer.Option(
+            "--projector",
+            "-p",
+            help="HF repo id of the projector this bundle was built from (used in the README).",
+        ),
+    ],
+    repo: Annotated[
+        str,
+        typer.Option("--repo", help="Target HF repo id (model)."),
+    ] = "mazesmazes/tiny-audio-swift-bundle",
+    bundle_dir: Annotated[
+        Path,
+        typer.Option("--bundle-dir", help="Local bundle directory to upload."),
+    ] = _DEFAULT_BUNDLE_DIR,
+    private: Annotated[
+        bool,
+        typer.Option(
+            "--private",
+            help="Create the repo as private if it doesn't exist (default: public).",
+        ),
+    ] = False,
+    commit_message: Annotated[
+        Optional[str],
+        typer.Option("--commit-message", help="HF commit message."),
+    ] = None,
+) -> None:
+    """Push the assembled Swift MLX bundle to a HuggingFace model repo."""
+    from scripts.bundle.push_bundle import push_bundle
+
+    msg = commit_message or f"Update bundle from {projector}"
+    push_bundle(
+        bundle_dir=bundle_dir,
+        repo=repo,
+        projector_repo=projector,
+        private=private,
+        commit_message=msg,
+    )
+
+
 if __name__ == "__main__":
     app()
