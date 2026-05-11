@@ -38,7 +38,6 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources/silero_vad.mlpackage"),
-                .copy("Resources/Model"),
             ]
         ),
         .executableTarget(
