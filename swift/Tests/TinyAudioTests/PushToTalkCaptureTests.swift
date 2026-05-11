@@ -5,10 +5,13 @@ import Testing
 
 @Suite("PushToTalkCapture")
 struct PushToTalkCaptureTests {
-  /// Verifies the public API shape compiles and the type is constructible
-  /// without triggering a mic permission prompt. `warmUp()` is safe to call
-  /// without permission — it only does `engine.prepare()`, no audio I/O.
-  @Test func initAndWarmUpDoNotPromptForMicAccess() async {
+  /// Tripwire for accidental public-API drift. Constructs the actor,
+  /// confirms warmUp() is callable, and pins the public function signatures
+  /// via type assignment. This test does NOT assert "no mic permission
+  /// prompt occurred" — there's no API to observe that. It does run
+  /// `engine.prepare()` via warmUp(), which is known to be silent on
+  /// macOS/iOS/visionOS (no audio I/O, no mic indicator).
+  @Test func apiSignaturesAreStable() async {
     let capture = PushToTalkCapture()
     await capture.warmUp()
     // Confirm the public methods compile with the expected signatures.
