@@ -25,3 +25,6 @@ swift/outputs/
 swift/Sources/TinyAudio/Resources/Model/*
 !swift/Sources/TinyAudio/Resources/Model/README.md
 .cache/
+
+# Local design docs / superpowers artifacts
+docs/
