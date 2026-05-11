@@ -26,26 +26,7 @@ run_xcodebuild() {
 }
 
 echo "==> swift test (TinyAudio)"
-cd "$SWIFT_DIR"
-# `swift test` builds the test bundle without an `mlx.metallib`, so MLX's C++
-# layer prints "Failed to load the default metallib" during process teardown
-# and the process exits non-zero — even when every test passed. Detect that
-# specific case and treat it as success; surface anything else as a real fail.
-TEST_LOG="$(mktemp)"
-set +e
-swift test 2>&1 | tee "$TEST_LOG"
-TEST_EXIT=${PIPESTATUS[0]}
-set -e
-if [ "$TEST_EXIT" -ne 0 ]; then
-  if grep -q "Failed to load the default metallib" "$TEST_LOG" \
-     && ! grep -qE "(✘|Test run had| failed after )" "$TEST_LOG"; then
-    echo "note: ignoring known MLX metallib teardown crash (all tests passed)"
-  else
-    rm -f "$TEST_LOG"
-    exit "$TEST_EXIT"
-  fi
-fi
-rm -f "$TEST_LOG"
+"$REPO_ROOT/scripts/run-swift-test.sh"
 
 echo "==> xcodegen (TinyAudioDemo)"
 cd "$DEMO_DIR"
