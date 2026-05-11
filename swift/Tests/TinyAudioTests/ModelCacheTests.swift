@@ -5,11 +5,18 @@ import Testing
 
 @Suite("ModelCache (no network)")
 struct ModelCacheTests {
-  @Test("directory returns a stable per-repo URL under Application Support")
-  func directoryURL() throws {
-    let url = try ModelCache.directory(for: "owner/repo-name")
+  @Test("snapshotURL is under Application Support / TinyAudio / Models / models / <repo>")
+  func snapshotURL() throws {
+    let url = try ModelCache.snapshotURL(for: "owner/repo-name")
     let path = url.path
-    #expect(path.hasSuffix("/Library/Application Support/TinyAudio/Models/owner_repo-name"))
+    #expect(path.hasSuffix("/Library/Application Support/TinyAudio/Models/models/owner/repo-name"))
+  }
+
+  @Test("cacheRoot is under Application Support / TinyAudio / Models")
+  func cacheRoot() throws {
+    let url = try ModelCache.cacheRoot()
+    let path = url.path
+    #expect(path.hasSuffix("/Library/Application Support/TinyAudio/Models"))
   }
 
   @Test("hasAllFiles returns false when dir empty")
