@@ -3,43 +3,45 @@ import Testing
 
 @testable import TinyAudio
 
-@Suite("ChatSession smoke")
-struct ChatSessionTests {
-  @Test func generatesNonEmptyStringFromBundledModel() async throws {
-    guard let bundle = Bundle.module.url(forResource: "Model", withExtension: nil) else {
-      print("[ChatSessionTests] skipping: bundled model not available")
-      return
-    }
-    let session = try await ChatSession.makeForTests(modelDirectory: bundle)
-    let out = try await session.chat(prompt: "Say hello.", maxNewTokens: 16)
-    #expect(!out.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+@Suite("ChatSession API surface")
+struct ChatSessionAPITests {
+  @Test("GenerationConfig defaults")
+  func generationDefaults() {
+    let c = GenerationConfig.default
+    #expect(c.maxTokens == 512)
+    #expect(abs(c.temperature - 0.2) < 0.001)
   }
 
-  @Test func rejectsEmptyPrompt() async throws {
-    guard let bundle = Bundle.module.url(forResource: "Model", withExtension: nil) else {
-      print("[ChatSessionTests] skipping: bundled model not available")
-      return
-    }
-    let session = try await ChatSession.makeForTests(modelDirectory: bundle)
-    do {
-      _ = try await session.chat(prompt: "   ", maxNewTokens: 8)
-      Issue.record("expected promptEmpty")
-    } catch TinyAudioError.promptEmpty {
-      // expected
-    }
+  @Test("GenerationConfig custom")
+  func generationCustom() {
+    let c = GenerationConfig(maxTokens: 64, temperature: 0.0)
+    #expect(c.maxTokens == 64)
+    #expect(c.temperature == 0.0)
   }
 
-  @Test func rejectsZeroMaxNewTokens() async throws {
-    guard let bundle = Bundle.module.url(forResource: "Model", withExtension: nil) else {
-      print("[ChatSessionTests] skipping: bundled model not available")
-      return
+  @Test("ChatSession.repoId is the OptiQ 4-bit Qwen3.5-2B build")
+  func repoId() {
+    #expect(ChatSession.repoId == "mlx-community/Qwen3.5-2B-OptiQ-4bit")
+  }
+}
+
+/// Network-gated integration test — only runs when TINYAUDIO_RUN_NETWORK_TESTS is set,
+/// because it downloads ~1.4 GB on first invocation and requires Apple Silicon Metal.
+@Suite(
+  "ChatSession integration",
+  .disabled(if: ProcessInfo.processInfo.environment["TINYAUDIO_RUN_NETWORK_TESTS"] == nil)
+)
+struct ChatSessionIntegrationTests {
+  @Test("load + respond returns non-empty completion")
+  func loadAndRespond() async throws {
+    let session = try await ChatSession.load(
+      systemPrompt: "You are a helpful assistant. Reply with exactly one short sentence.",
+      generation: GenerationConfig(maxTokens: 32, temperature: 0.0)
+    )
+    var collected = ""
+    for try await chunk in session.respond(to: "Say hi.") {
+      collected += chunk
     }
-    let session = try await ChatSession.makeForTests(modelDirectory: bundle)
-    do {
-      _ = try await session.chat(prompt: "hi", maxNewTokens: 0)
-      Issue.record("expected invalidArgument")
-    } catch TinyAudioError.invalidArgument {
-      // expected
-    }
+    #expect(!collected.isEmpty)
   }
 }

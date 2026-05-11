@@ -15,6 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", from: "2.31.3"),
         .package(url: "https://github.com/Blaizzy/mlx-audio-swift", from: "0.1.2"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.6"),
     ],
@@ -28,6 +29,8 @@ let package = Package(
                 .product(name: "MLXRandom", package: "mlx-swift"),
                 .product(name: "MLXAudioCore", package: "mlx-audio-swift"),
                 .product(name: "MLXAudioSTT", package: "mlx-audio-swift"),
+                .product(name: "MLXLLM", package: "mlx-swift-lm"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
                 .product(name: "Hub", package: "swift-transformers"),
                 .product(name: "Tokenizers", package: "swift-transformers"),
             ],
@@ -38,7 +41,6 @@ let package = Package(
             ],
             resources: [
                 .copy("Resources/silero_vad.mlpackage"),
-                .copy("Resources/Model"),
             ]
         ),
         .executableTarget(

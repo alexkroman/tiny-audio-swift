@@ -43,6 +43,13 @@ public enum TinyAudioError: Error, Sendable {
   /// The caller passed an invalid argument value (e.g. `maxNewTokens <= 0`)
   /// that the SDK rejects before doing any model work.
   case invalidArgument(reason: String)
+
+  /// The model snapshot download failed (network, disk, or HF response).
+  ///
+  /// - Parameters:
+  ///   - repo: The HuggingFace repo id we were fetching.
+  ///   - underlying: The root cause from the network layer or the runtime.
+  case modelDownloadFailed(repo: String, underlying: AnyError)
 }
 
 /// A `Sendable` type-erased wrapper for any `Error`.
@@ -96,6 +103,7 @@ extension TinyAudioError: Equatable {
     case (.audioSessionConfigurationFailed, .audioSessionConfigurationFailed): return true
     case (.promptEmpty, .promptEmpty): return true
     case (.invalidArgument(let lr), .invalidArgument(let rr)): return lr == rr
+    case (.modelDownloadFailed(let l, _), .modelDownloadFailed(let r, _)): return l == r
     default: return false
     }
   }
@@ -115,6 +123,8 @@ extension TinyAudioError: CustomStringConvertible {
       return "Prompt was empty or whitespace-only."
     case .invalidArgument(let reason):
       return "Invalid argument: \(reason)"
+    case .modelDownloadFailed(let repo, let err):
+      return "model download failed for \(repo): \(err)"
     }
   }
 }
