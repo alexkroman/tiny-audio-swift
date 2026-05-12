@@ -1,5 +1,3 @@
-// swift/Sources/tiny-audio-swift-eval/main.swift
-//
 // Tiny CLI binary used by `ta eval -m swift://...` — loads the SDK's
 // Transcriber once, then processes file paths from stdin (one per line),
 // emitting JSON results to stdout (one per line).

@@ -1,5 +1,3 @@
-// swift/Sources/tiny-audio-vad-bench/main.swift
-//
 // Per-frame latency benchmark for SileroVAD across CoreML compute units.
 // Standalone executable that measures one compute-units choice per
 // invocation — releasing the underlying CoreML MLModel between two

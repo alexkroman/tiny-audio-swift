@@ -41,3 +41,11 @@ repos:
         types: [swift]
         pass_filenames: false
         stages: [pre-push]
+
+      - id: swift-e2e
+        name: swift e2e (TINY_AUDIO_E2E=1)
+        entry: scripts/run-e2e-tests.sh
+        language: system
+        types: [swift]
+        pass_filenames: false
+        stages: [pre-push]
