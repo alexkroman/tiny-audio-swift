@@ -27,17 +27,17 @@ swift run --package-path swift/Examples/CookbookDemo CookbookDemo
 
 ## Voice commands
 
-| Say | Effect |
-| ---------------------------------- | ----------------------- |
-| "next" / "next step" / "go on" | advance one step |
-| "back" / "go back" / "previous" | go back one step |
-| "repeat" / "say that again" | re-display current step |
-| "restart" / "start over" | jump to step 1 |
-| "what are the ingredients" | show ingredients panel |
-| "set a timer for five minutes" | start a timer |
-| "cancel timer" / "stop the timer" | clear active timer |
-| "add olive oil to my list" | add to grocery list |
-| "show my grocery list" | full-screen list overlay |
+| Say                               | Effect                   |
+| --------------------------------- | ------------------------ |
+| "next" / "next step" / "go on"    | advance one step         |
+| "back" / "go back" / "previous"   | go back one step         |
+| "repeat" / "say that again"       | re-display current step  |
+| "restart" / "start over"          | jump to step 1           |
+| "what are the ingredients"        | show ingredients panel   |
+| "set a timer for five minutes"    | start a timer            |
+| "cancel timer" / "stop the timer" | clear active timer       |
+| "add olive oil to my list"        | add to grocery list      |
+| "show my grocery list"            | full-screen list overlay |
 
 ## Manual demo checklist
 

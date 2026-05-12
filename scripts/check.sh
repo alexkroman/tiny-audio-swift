@@ -61,4 +61,20 @@ else
   echo "note: periphery not installed; skipping (brew install periphery)"
 fi
 
+if command -v actionlint >/dev/null 2>&1; then
+  echo "==> actionlint"
+  cd "$REPO_ROOT"
+  actionlint
+else
+  echo "note: actionlint not installed; skipping (brew install actionlint)"
+fi
+
+if command -v prettier >/dev/null 2>&1; then
+  echo "==> prettier --check"
+  cd "$REPO_ROOT"
+  prettier --check '**/*.{yml,yaml,md}'
+else
+  echo "note: prettier not installed; skipping (brew install prettier)"
+fi
+
 echo "==> ok"

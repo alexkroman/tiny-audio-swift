@@ -21,6 +21,19 @@ repos:
         types: [swift]
         pass_filenames: false
 
+      - id: actionlint
+        name: actionlint
+        entry: actionlint
+        language: system
+        files: ^\.github/workflows/.+\.ya?ml$
+        pass_filenames: false
+
+      - id: prettier
+        name: prettier --check
+        entry: prettier --check
+        language: system
+        types_or: [yaml, markdown]
+
       - id: swift-test
         name: swift test
         entry: scripts/run-swift-test.sh

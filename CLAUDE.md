@@ -40,12 +40,12 @@ swift-format lint   --strict   --recursive swift/Sources swift/Tests
 
 Several test suites download large models or hit hardware and are skipped by default. Set the corresponding env var to opt in:
 
-| Var | Effect |
-|---|---|
-| `TINY_AUDIO_E2E=1` | Runs `E2ETokenID`, `PrefixCacheTests` — downloads ~460 MB on first run, validates token-ID parity with the Python reference. |
-| `TINY_AUDIO_PROFILE=1` | Runs `ProfilingTests` **and** enables per-phase timing inside `ASRPipeline` (adds forced `MLX.eval` syncs — never set in production benchmarks). |
-| `TINY_AUDIO_MIC=1` | Runs live-mic integration test — requires real mic + permission grant. |
-| `TINYAUDIO_RUN_NETWORK_TESTS=1` | Runs `ChatSessionIntegrationTests` — downloads ~1.4 GB Qwen3.5-2B-OptiQ-4bit. |
+| Var                             | Effect                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TINY_AUDIO_E2E=1`              | Runs `E2ETokenID`, `PrefixCacheTests` — downloads ~460 MB on first run, validates token-ID parity with the Python reference.                     |
+| `TINY_AUDIO_PROFILE=1`          | Runs `ProfilingTests` **and** enables per-phase timing inside `ASRPipeline` (adds forced `MLX.eval` syncs — never set in production benchmarks). |
+| `TINY_AUDIO_MIC=1`              | Runs live-mic integration test — requires real mic + permission grant.                                                                           |
+| `TINYAUDIO_RUN_NETWORK_TESTS=1` | Runs `ChatSessionIntegrationTests` — downloads ~1.4 GB Qwen3.5-2B-OptiQ-4bit.                                                                    |
 
 ### Python (bundle build pipeline, rarely needed)
 
@@ -90,6 +90,7 @@ AudioInput → AudioDecoder (16 kHz mono Float32)
 Decoded once at end of stream: BPE/SentencePiece is context-sensitive, so you cannot accumulate per-token decodes — `transcribe()` collects token IDs then calls `tokenizer.decode(tokens:)` once.
 
 Key non-obvious details:
+
 - The audio token (`<audio>`) is **added at runtime** to the bundled `tokenizer.json` (`Transcriber.loadTokenizerWithAudioToken`). The bundle ships the base Qwen3 tokenizer; we patch `added_tokens` in-memory to match Python's `add_special_tokens(...)`.
 - `Transcriber.load` reads `quantization.{group_size, bits}` from `encoder` config and `decoder_config.json`. Different bundles ship different quantization — fine-tuned decoders use 8-bit/64 (4-bit affine quant degrades EOS prediction); stock decoders use 4-bit/128; fp16 bundles omit the block entirely and skip the `quantize()` call.
 - A persistent KV-cache "prefix cache" pre-prefills the constant chat-template prefix once at init (`ASRPipeline.buildPrefixCache`). Each `tokenStream` call reuses it. `bypassPrefixCacheForTesting` (`@_spi(Testing)`) forces the legacy full-prefill path for parity tests.
