@@ -350,11 +350,9 @@ public actor MicrophoneTranscriber {
 
   /// Convert one tap-delivered `AVAudioPCMBuffer` to 16 kHz mono `[Float]`.
   ///
-  /// The converter is reused across tap callbacks. After delivering this
-  /// call's input we signal `.noDataNow` (NOT `.endOfStream`) so the
-  /// converter stays alive for the next call. Sending `.endOfStream` would
-  /// finalize the converter and every subsequent `convert()` would return
-  /// zero samples — see commit history for the bug this guards against.
+  /// The converter is reused across tap callbacks — `reuseConverter: true`
+  /// makes the helper signal `.noDataNow` instead of `.endOfStream` so the
+  /// converter stays alive for the next call.
   private static func convertBuffer(
     _ inputBuffer: AVAudioPCMBuffer,
     with converter: AVAudioConverter,
@@ -367,26 +365,12 @@ public actor MicrophoneTranscriber {
     guard let outBuffer = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: outCapacity) else {
       throw TinyAudioError.audioFormatUnsupported(reason: "output buffer allocation failed")
     }
-
-    // Single-shot delivery: hand over this tap's buffer once, then signal
-    // .noDataNow so the converter pauses without finalizing.
-    final class InputState: @unchecked Sendable { var delivered = false }
-    let state = InputState()
-    var convError: NSError?
-    let status = converter.convert(to: outBuffer, error: &convError) { _, outStatus in
-      if state.delivered {
-        outStatus.pointee = .noDataNow
-        return nil
-      }
-      state.delivered = true
-      outStatus.pointee = .haveData
-      return inputBuffer
-    }
-    if status == .error || convError != nil {
-      throw TinyAudioError.audioFormatUnsupported(
-        reason: "conversion failed: \(convError?.localizedDescription ?? "unknown")"
-      )
-    }
+    try AudioResampler.convertOnce(
+      converter: converter,
+      input: inputBuffer,
+      output: outBuffer,
+      reuseConverter: true
+    )
     let frameCount = Int(outBuffer.frameLength)
     guard frameCount > 0, let ch = outBuffer.floatChannelData?[0] else { return [] }
     return Array(UnsafeBufferPointer(start: ch, count: frameCount))

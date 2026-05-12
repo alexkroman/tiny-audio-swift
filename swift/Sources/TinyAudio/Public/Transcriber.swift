@@ -100,10 +100,13 @@ public actor Transcriber {
     // 2. Read bundle config.json.
     let configURL = modelDirectory.appendingPathComponent("config.json")
     let configData = try Data(contentsOf: configURL)
-    guard let config = try JSONSerialization.jsonObject(with: configData) as? [String: Any] else {
+    let bundleConfig: ASRBundleConfig
+    do {
+      bundleConfig = try JSONDecoder().decode(ASRBundleConfig.self, from: configData)
+    } catch {
       throw TinyAudioError.mlxModuleLoadFailed(
         name: "config",
-        underlying: AnyError(ConfigError.invalidJSON("config.json is not a dict"))
+        underlying: AnyError(error)
       )
     }
 
@@ -113,45 +116,28 @@ public actor Transcriber {
     // 5. Build encoder, quantize per the bundle's config, load weights.
     //    `encoder.quantization.{group_size, bits}` is written by the Python
     //    build pipeline so it always matches what `mlx.nn.quantize` did at
-    //    bundle-build time. Falls back to (64, 4) for bundles built before
-    //    the field was added.
-    let encoder: GLMASREncoder
+    //    bundle-build time. Absent block ⇒ fp16 bundle (equivalence-test mode);
+    //    skip the quantize() call so plain Linear modules accept the weights.
+    let encoder = GLMASREncoder(GLMASREncoderConfig(bundleConfig.encoder))
+    if let q = bundleConfig.encoder.quantization {
+      quantize(model: encoder, groupSize: q.groupSize, bits: q.bits)
+    }
     do {
-      guard let encConfigDict = config["encoder"] as? [String: Any] else {
-        throw ConfigError.missingKey("encoder")
-      }
-      let encConfig = try GLMASREncoderConfig(dict: encConfigDict)
-      encoder = GLMASREncoder(encConfig)
-      // No quantization block ⇒ bundle ships fp16 weights (equivalence-test
-      // mode); skip the quantize() call so plain Linear modules accept them.
-      if let encQuant = encConfigDict["quantization"] as? [String: Int],
-        let groupSize = encQuant["group_size"], let bits = encQuant["bits"]
-      {
-        quantize(model: encoder, groupSize: groupSize, bits: bits)
-      }
       let weights = Self.castWeightsForCompute(
         try MLX.loadArrays(url: modelDirectory.appendingPathComponent("encoder.safetensors"))
       )
       try encoder.update(parameters: ModuleParameters.unflattened(weights), verify: .all)
-    } catch let e as TinyAudioError {
-      throw e
     } catch {
       throw TinyAudioError.mlxModuleLoadFailed(name: "encoder", underlying: AnyError(error))
     }
 
     // 6. Build projector (fp16 — no quantization), load weights.
-    let projector: MLPProjector
+    let projector = MLPProjector(bundleConfig.projector)
     do {
-      guard let projConfigDict = config["projector"] as? [String: Any] else {
-        throw ConfigError.missingKey("projector")
-      }
-      projector = try MLPProjector(dict: projConfigDict)
       let weights = Self.castWeightsForCompute(
         try MLX.loadArrays(url: modelDirectory.appendingPathComponent("projector.safetensors"))
       )
       try projector.update(parameters: ModuleParameters.unflattened(weights), verify: .all)
-    } catch let e as TinyAudioError {
-      throw e
     } catch {
       throw TinyAudioError.mlxModuleLoadFailed(name: "projector", underlying: AnyError(error))
     }
@@ -332,77 +318,92 @@ public actor Transcriber {
   }
 }
 
-// MARK: - GLMASREncoderConfig convenience init
+// MARK: - Bundle config schema
+
+/// Decodable mirror of `config.json` from the ASR bundle. Field names use
+/// snake_case in JSON to match the Python build pipeline; `CodingKeys` map
+/// them to Swift camelCase.
+private struct ASRBundleConfig: Decodable {
+  let encoder: Encoder
+  let projector: Projector
+
+  struct Encoder: Decodable {
+    let nMels: Int
+    let encoderDim: Int
+    let numLayers: Int
+    let numHeads: Int
+    let headDim: Int
+    let intermediateSize: Int
+    let ropeTheta: Float?
+    let quantization: QuantizationBlock?
+
+    enum CodingKeys: String, CodingKey {
+      case nMels = "n_mels"
+      case encoderDim = "encoder_dim"
+      case numLayers = "num_layers"
+      case numHeads = "num_heads"
+      case headDim = "head_dim"
+      case intermediateSize = "intermediate_size"
+      case ropeTheta = "rope_theta"
+      case quantization
+    }
+  }
+
+  struct Projector: Decodable {
+    let encoderDim: Int
+    let llmDim: Int
+    let hiddenDim: Int
+    let poolStride: Int
+
+    enum CodingKeys: String, CodingKey {
+      case encoderDim = "encoder_dim"
+      case llmDim = "llm_dim"
+      case hiddenDim = "hidden_dim"
+      case poolStride = "pool_stride"
+    }
+  }
+}
+
+/// Quantization parameters shared between `config.json` (encoder block) and
+/// `decoder_config.json` (top-level `quantization` block).
+private struct QuantizationBlock: Decodable {
+  let groupSize: Int
+  let bits: Int
+  enum CodingKeys: String, CodingKey {
+    case groupSize = "group_size"
+    case bits
+  }
+}
 
 extension GLMASREncoderConfig {
-  fileprivate init(dict: [String: Any]) throws {
-    guard
-      let nMels = dict["n_mels"] as? Int,
-      let encoderDim = dict["encoder_dim"] as? Int,
-      let numLayers = dict["num_layers"] as? Int,
-      let numHeads = dict["num_heads"] as? Int,
-      let headDim = dict["head_dim"] as? Int,
-      let intermediateSize = dict["intermediate_size"] as? Int
-    else {
-      throw ConfigError.missingKey("encoder fields")
-    }
-    let ropeTheta: Float
-    if let d = dict["rope_theta"] as? Double {
-      ropeTheta = Float(d)
-    } else if let f = dict["rope_theta"] as? Float {
-      ropeTheta = f
-    } else if let i = dict["rope_theta"] as? Int {
-      ropeTheta = Float(i)
-    } else {
-      ropeTheta = 10_000
-    }
+  fileprivate init(_ block: ASRBundleConfig.Encoder) {
     self.init(
-      nMels: nMels,
-      encoderDim: encoderDim,
-      numLayers: numLayers,
-      numHeads: numHeads,
-      headDim: headDim,
-      intermediateSize: intermediateSize,
-      ropeTheta: ropeTheta
+      nMels: block.nMels,
+      encoderDim: block.encoderDim,
+      numLayers: block.numLayers,
+      numHeads: block.numHeads,
+      headDim: block.headDim,
+      intermediateSize: block.intermediateSize,
+      ropeTheta: block.ropeTheta ?? 10_000
     )
   }
 }
-
-// MARK: - MLPProjector convenience init
 
 extension MLPProjector {
-  fileprivate convenience init(dict: [String: Any]) throws {
-    guard
-      let encoderDim = dict["encoder_dim"] as? Int,
-      let llmDim = dict["llm_dim"] as? Int,
-      let hiddenDim = dict["hidden_dim"] as? Int,
-      let poolStride = dict["pool_stride"] as? Int
-    else {
-      throw ConfigError.missingKey("projector fields")
-    }
+  fileprivate convenience init(_ block: ASRBundleConfig.Projector) {
     self.init(
-      encoderDim: encoderDim,
-      llmDim: llmDim,
-      hiddenDim: hiddenDim,
-      poolStride: poolStride
+      encoderDim: block.encoderDim,
+      llmDim: block.llmDim,
+      hiddenDim: block.hiddenDim,
+      poolStride: block.poolStride
     )
   }
 }
-
-// MARK: - Decoder quantization spec
 
 /// Reads the `quantization` block from `decoder_config.json` so we can call
 /// `quantize()` with the same group_size/bits the bundle was built with.
-private struct DecoderQuantizationSpec: Codable {
-  struct Block: Codable {
-    let groupSize: Int
-    let bits: Int
-    enum CodingKeys: String, CodingKey {
-      case groupSize = "group_size"
-      case bits
-    }
-  }
-  let quantization: Block
+private struct DecoderQuantizationSpec: Decodable {
+  let quantization: QuantizationBlock
 }
 
 // MARK: - Internal config-parsing errors
