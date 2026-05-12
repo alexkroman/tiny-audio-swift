@@ -9,7 +9,7 @@ directory (typically produced by `ta mlx convert-decoder`).
 
 Usage:
     ta mlx build-bundle \\
-        --projector mazesmazes/tiny-audio-embedded \\
+        --projector mazesmazes/tiny-audio \\
         --decoder /path/to/mlx-lm-decoder-dir \\
         --output-dir swift/Sources/TinyAudio/Resources/Model
 """
