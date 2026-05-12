@@ -18,7 +18,7 @@ import Foundation
 /// This is a one-shot resampler — feed the complete buffer once. It is not
 /// safe to call repeatedly on streaming chunks; the resampler's internal
 /// filter state is not preserved across calls and tail samples will be dropped.
-public func resampleToMono16k(
+func resampleToMono16k(
   _ samples: [Float],
   sampleRate: Double
 ) throws -> [Float] {

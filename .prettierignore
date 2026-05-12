@@ -1,0 +1,19 @@
+# Build / cache / virtualenv directories
+.build/
+swift/.build/
+.venv/
+.cache/
+.ruff_cache/
+.mypy_cache/
+**/.DS_Store
+
+# Generated and gitignored resources
+swift/Sources/TinyAudio/Resources/Model/
+
+# Vendored upstream copies (kept verbatim for rebase parity)
+swift/Sources/TinyAudio/Vendored/
+
+# Xcode-generated files
+*.xcodeproj/
+*.xcworkspace/
+Package.resolved

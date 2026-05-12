@@ -69,8 +69,7 @@ public actor ChatSession {
     )
     let primer = try? await buildPrimerCache(
       container: container,
-      systemPrompt: systemPrompt,
-      generation: generation
+      systemPrompt: systemPrompt
     )
     return ChatSession(
       container: container,
@@ -82,8 +81,7 @@ public actor ChatSession {
 
   private static func buildPrimerCache(
     container: ModelContainer,
-    systemPrompt: String,
-    generation: GenerationConfig
+    systemPrompt: String
   ) async throws -> URL {
     let parameters = GenerateParameters(maxTokens: 4, temperature: 0.0)
     let primer = MLXLMCommon.ChatSession(

@@ -127,15 +127,15 @@ let text = try await transcriber.transcribe(.samples(samples, sampleRate: 16_000
 
 ## Public API surface
 
-| Type | Description |
-|------|-------------|
-| `Transcriber` | Async actor for file / buffer / sample transcription |
-| `MicrophoneTranscriber` | Async actor for live-mic transcription with Silero VAD |
-| `AudioInput` | File URL, `AVAudioPCMBuffer`, or raw `[Float]` samples |
-| `TranscriptionOptions` | `maxNewTokens`, optional system prompt |
-| `WeightSource` | Default Hub bundle, custom Hub repo, or local directory |
-| `VADConfig` | Tuning knobs for Silero VAD endpointing thresholds |
-| `TinyAudioError` | Typed errors for download / verification / runtime failures |
+| Type                    | Description                                                 |
+| ----------------------- | ----------------------------------------------------------- |
+| `Transcriber`           | Async actor for file / buffer / sample transcription        |
+| `MicrophoneTranscriber` | Async actor for live-mic transcription with Silero VAD      |
+| `AudioInput`            | File URL, `AVAudioPCMBuffer`, or raw `[Float]` samples      |
+| `TranscriptionOptions`  | `maxNewTokens`, optional system prompt                      |
+| `WeightSource`          | Default Hub bundle, custom Hub repo, or local directory     |
+| `VADConfig`             | Tuning knobs for Silero VAD endpointing thresholds          |
+| `TinyAudioError`        | Typed errors for download / verification / runtime failures |
 
 ## Model details
 
@@ -195,10 +195,10 @@ swift package --package-path swift generate-documentation --target TinyAudio
 
 The Swift SDK was validated against the Python MLX reference on a 200-sample slice of loquacious:
 
-| Backend | WER % |
-|---------|-------|
+| Backend    | WER % |
+| ---------- | ----- |
 | Python MLX | 13.88 |
-| Swift SDK | 9.93 |
+| Swift SDK  | 9.93  |
 
 The Swift path achieves lower WER (delta = −3.95 pp), driven by the Python path hallucinating on a small number of short clips. Full methodology, per-sample breakdown, and reproduction steps are in [`swift/docs/wer-parity.md`](docs/wer-parity.md).
 

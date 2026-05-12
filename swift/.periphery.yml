@@ -1,0 +1,12 @@
+# TinyAudio is an SDK consumed by external apps, so public declarations are
+# entry points, not dead code.
+retain_public: true
+
+# Codable structs (bundle config, eval-CLI JSON, vendored Qwen3 KV-cache state)
+# decode fields that aren't always read in this codebase.
+retain_assign_only_properties: true
+
+# Vendored upstream code (see Sources/TinyAudio/Vendored/Qwen3/UPSTREAM.md) —
+# patched copy of mlx-swift-lm's Qwen3 kept verbatim for rebase-friendliness.
+report_exclude:
+  - "Sources/TinyAudio/Vendored/**"

@@ -7,7 +7,9 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-
+.claude/
+.mypy_cache/
+.ruff_cache/
 # Swift / SPM
 .build/
 .swiftpm/

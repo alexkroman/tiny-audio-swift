@@ -36,19 +36,16 @@ public actor PushToTalkCapture {
   private let engine = AVAudioEngine()
   private var rawSamples: [Float] = []
   private var inputSampleRate: Double = 0
-  private var cachedInputFormat: AVAudioFormat?
   private var prepared = false
 
   public init() {}
 
-  /// Pre-allocate `AVAudioEngine` resources and cache the input format so the
-  /// first `start()` is fast. Safe to call multiple times; idempotent.
+  /// Pre-allocate `AVAudioEngine` resources so the first `start()` is fast.
+  /// Safe to call multiple times; idempotent.
   public func warmUp() {
     if prepared { return }
     let input = engine.inputNode
-    let inputFormat = input.outputFormat(forBus: 0)
-    self.cachedInputFormat = inputFormat
-    self.inputSampleRate = inputFormat.sampleRate
+    self.inputSampleRate = input.outputFormat(forBus: 0).sampleRate
     engine.prepare()
     prepared = true
   }
