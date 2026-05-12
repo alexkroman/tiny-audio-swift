@@ -23,7 +23,7 @@ repos:
 
       - id: swift-test
         name: swift test
-        entry: bash -c 'cd swift && swift test'
+        entry: scripts/run-swift-test.sh
         language: system
         types: [swift]
         pass_filenames: false
