@@ -418,7 +418,7 @@ private enum ConfigError: Error {
 extension Transcriber {
   /// Maximum number of new tokens the decoder may generate per call.
   /// Matches the published checkpoint's `generation_config.max_new_tokens`
-  /// (`tiny-audio-embedded/config.json` — 128).
+  /// (`tiny-audio/config.json` — 128).
   private static let maxNewTokens = 128
 
   /// Transcribe audio to text, waiting for the full transcript before returning.

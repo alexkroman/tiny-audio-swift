@@ -12,7 +12,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DECODER_CACHE = _PROJECT_ROOT / ".cache" / "decoder-mlx"
 _DEFAULT_BUNDLE_DIR = _PROJECT_ROOT / "swift/Sources/TinyAudio/Resources/Model"
 _STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-8bit"
-_DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio-embedded"
+_DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio"
 
 
 def _projector_needs_converted_decoder(repo_or_path: str) -> bool:

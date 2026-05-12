@@ -37,7 +37,7 @@ In your `Package.swift`:
 >
 > ```bash
 > poetry install
-> poetry run ta mlx build-bundle --projector mazesmazes/tiny-audio-embedded-2
+> poetry run ta mlx build-bundle --projector mazesmazes/tiny-audio
 > ```
 >
 > See `Sources/TinyAudio/Resources/Model/README.md` for the bundle layout.

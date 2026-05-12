@@ -14,7 +14,7 @@ building the Swift package:
 
 ```bash
 poetry install
-poetry run ta mlx build-bundle --projector mazesmazes/tiny-audio-embedded-2
+poetry run ta mlx build-bundle --projector mazesmazes/tiny-audio
 ```
 
 `build-bundle` pulls the projector + (when needed) auto-runs
