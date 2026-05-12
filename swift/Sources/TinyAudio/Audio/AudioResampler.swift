@@ -36,31 +36,50 @@ struct AudioResampler {
       throw TinyAudioError.audioFormatUnsupported(reason: "could not allocate output buffer")
     }
 
-    // The AVAudioConverter input block is `@Sendable` under Swift 6, even though
-    // it's called synchronously on the calling thread. Wrap the one-shot delivery
-    // flag in a class so the closure captures a reference rather than a captured
-    // mutable var.
-    final class InputState: @unchecked Sendable {
-      var delivered = false
-    }
+    try convertOnce(
+      converter: converter,
+      input: buffer,
+      output: outBuffer,
+      reuseConverter: false
+    )
+    return Self.copyMono(outBuffer)
+  }
+
+  /// Drive `converter` through a single conversion of `input` into `output`.
+  ///
+  /// The converter's input callback delivers `input` exactly once and then
+  /// signals completion. Pass `reuseConverter: false` for one-shot
+  /// conversions where the converter is discarded afterwards; pass `true`
+  /// when the same converter will be reused across many calls — sending
+  /// `.endOfStream` would finalize it and every subsequent `convert()` would
+  /// return zero samples.
+  ///
+  /// The `InputState` class boxes the one-shot delivery flag because the
+  /// input block is `@Sendable` under Swift 6 even though it's called
+  /// synchronously on the calling thread; the closure captures by reference.
+  static func convertOnce(
+    converter: AVAudioConverter,
+    input: AVAudioPCMBuffer,
+    output: AVAudioPCMBuffer,
+    reuseConverter: Bool
+  ) throws {
+    final class InputState: @unchecked Sendable { var delivered = false }
     let state = InputState()
     var convError: NSError?
-    let status = converter.convert(to: outBuffer, error: &convError) { _, outStatus in
+    let status = converter.convert(to: output, error: &convError) { _, outStatus in
       if state.delivered {
-        outStatus.pointee = .endOfStream
+        outStatus.pointee = reuseConverter ? .noDataNow : .endOfStream
         return nil
       }
       state.delivered = true
       outStatus.pointee = .haveData
-      return buffer
+      return input
     }
-
     if status == .error || convError != nil {
       throw TinyAudioError.audioFormatUnsupported(
         reason: "conversion failed: \(convError?.localizedDescription ?? "unknown")"
       )
     }
-    return Self.copyMono(outBuffer)
   }
 
   private static func copyMono(_ buffer: AVAudioPCMBuffer) -> [Float] {
