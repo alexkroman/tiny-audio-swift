@@ -103,9 +103,10 @@ enum ModelCache {
     try sha.write(to: url, atomically: true, encoding: .utf8)
   }
 
-  /// Ensure `expectedFiles` exist in the snapshot directory for `repo`.
-  /// If any are missing, fetch them via `hub.snapshot(...)`. Returns the
-  /// on-disk snapshot directory.
+  static func fetchUpstreamCommit(repo: String, hub: ModelHub) async -> String? {
+    return try? await hub.upstreamCommit(repo: repo)
+  }
+
   static func ensureDownloaded(
     repo: String,
     expectedFiles: [String],
@@ -114,7 +115,22 @@ enum ModelCache {
   ) async throws -> URL {
     let target = try snapshotURL(for: repo)
     progress?(.checking)
-    if hasAllFiles(expectedFiles, in: target) { return target }
+    let localFilesPresent = hasAllFiles(expectedFiles, in: target)
+    let upstream = await fetchUpstreamCommit(repo: repo, hub: hub)
+
+    if localFilesPresent {
+      let local = readLocalCommit(in: target)
+      if local == nil {
+        if let upstream { try? writeLocalCommit(upstream, in: target) }
+        return target
+      }
+      if upstream == nil {
+        return target
+      }
+      if local == upstream {
+        return target
+      }
+    }
 
     do {
       let result = try await hub.snapshot(
@@ -136,6 +152,9 @@ enum ModelCache {
               ])
           )
         )
+      }
+      if let upstream {
+        try? writeLocalCommit(upstream, in: result)
       }
       return result
     } catch let e as TinyAudioError {
