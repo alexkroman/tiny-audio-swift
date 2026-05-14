@@ -12,7 +12,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DECODER_CACHE = _PROJECT_ROOT / ".cache" / "decoder-mlx"
 _DEFAULT_BUNDLE_DIR = _PROJECT_ROOT / "swift/Sources/TinyAudio/Resources/Model"
 _STOCK_DECODER_REPO = "Qwen/Qwen3-0.6B-MLX-8bit"
-_DEFAULT_CHECKPOINT = "mazesmazes/tiny-audio"
 
 
 def _projector_needs_converted_decoder(repo_or_path: str) -> bool:
@@ -49,61 +48,6 @@ def _resolve_default_decoder(projector: str) -> str:
         typer.echo(f"No cached decoder for {projector}; running convert-decoder...")
         convert_decoder(checkpoint=projector, out_dir=cache_path, q_bits=8)
     return str(cache_path)
-
-
-@app.command("convert-decoder")
-def convert_decoder_cmd(
-    checkpoint: Annotated[
-        str,
-        typer.Option(
-            "--checkpoint",
-            "-c",
-            help="HF repo id or local path of a tiny-audio checkpoint with full LM weights.",
-        ),
-    ] = _DEFAULT_CHECKPOINT,
-    out_dir: Annotated[
-        Path,
-        typer.Option(
-            "--out-dir",
-            "-o",
-            help="Where to write the MLX-LM 4-bit decoder. `build-bundle` reads this path by default.",
-        ),
-    ] = _DEFAULT_DECODER_CACHE,
-    q_bits: Annotated[
-        int,
-        typer.Option(
-            "--q-bits",
-            help=(
-                "Bits per weight. Default 8: full-decoder fine-tuning tightens weight "
-                "distributions enough that 4-bit affine quant degrades EOS prediction "
-                "(over-generation, repetition). 8-bit recovers PT-equivalent WER."
-            ),
-        ),
-    ] = 8,
-    q_group_size: Annotated[
-        int, typer.Option("--q-group-size", help="Quantization group size.")
-    ] = 64,
-    q_mode: Annotated[
-        str,
-        typer.Option(
-            "--q-mode",
-            help=(
-                "Quantization mode: affine (default), mxfp4, mxfp8, nvfp4. "
-                "mxfp4/nvfp4 hit an mlx-swift bug today (biases-not-null); use affine."
-            ),
-        ),
-    ] = "affine",
-) -> None:
-    """Extract the fine-tuned LM from a tiny-audio checkpoint and convert to MLX 4-bit (local)."""
-    from scripts.bundle.convert_decoder import convert_decoder
-
-    convert_decoder(
-        checkpoint=checkpoint,
-        out_dir=out_dir,
-        q_bits=q_bits,
-        q_group_size=q_group_size,
-        q_mode=q_mode,
-    )
 
 
 @app.command("build-bundle")
