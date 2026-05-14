@@ -77,9 +77,36 @@ public actor Transcriber {
   /// the weights are loaded, runs a short synthetic warmup at 1 s / 5 s /
   /// 15 s of audio to JIT-compile Metal kernels for the shapes most common
   /// in real ASR.
+  ///
+  /// Dev escape hatch: if the `TINY_AUDIO_LOCAL_MODEL_DIR` environment
+  /// variable is set, the HuggingFace download is skipped and the model is
+  /// loaded directly from that directory (intended for evaluating
+  /// locally-built bundles without publishing them).
   public static func load(
     progress: (@Sendable (LoadProgress) -> Void)? = nil
   ) async throws -> Transcriber {
+    if let override = ProcessInfo.processInfo.environment["TINY_AUDIO_LOCAL_MODEL_DIR"],
+      !override.isEmpty
+    {
+      let dir = URL(fileURLWithPath: (override as NSString).expandingTildeInPath)
+      var isDir: ObjCBool = false
+      guard FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue
+      else {
+        throw TinyAudioError.modelDownloadFailed(
+          repo: "TINY_AUDIO_LOCAL_MODEL_DIR",
+          underlying: AnyError(
+            NSError(
+              domain: "TinyAudio", code: 1,
+              userInfo: [
+                NSLocalizedDescriptionKey:
+                  "TINY_AUDIO_LOCAL_MODEL_DIR points to a non-existent directory: \(dir.path)"
+              ]))
+        )
+      }
+      progress?(.loading)
+      return try await load(modelDirectory: dir)
+    }
+
     let dir = try await ModelCache.ensureDownloaded(
       repo: Self.asrRepo,
       expectedFiles: Self.asrModelFiles,

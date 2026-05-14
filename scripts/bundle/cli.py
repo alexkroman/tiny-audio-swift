@@ -1,6 +1,7 @@
 """CLI for MLX bundle build utilities."""
 
 import json
+import shutil
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -34,19 +35,22 @@ def _projector_needs_converted_decoder(repo_or_path: str) -> bool:
 
 def _resolve_default_decoder(projector: str) -> str:
     """Pick the decoder source for a build-bundle invocation that didn't pass
-    --decoder. Caches per-projector under .cache/decoder-mlx/<sanitized-repo>
-    and auto-runs convert-decoder for fine-tuned/LoRA checkpoints so the
-    bundle's decoder matches the projector it was trained against."""
+    --decoder. For fine-tuned/LoRA checkpoints, always re-runs convert-decoder
+    (wiping the prior cached output first) so a stale cache from an older
+    revision of the same projector repo can't bundle the wrong decoder. Pure
+    projector-only checkpoints reuse the stock MLX decoder."""
     if not _projector_needs_converted_decoder(projector):
         return _STOCK_DECODER_REPO
 
+    from scripts.bundle.convert_decoder import convert_decoder
+
     sanitized = projector.replace("/", "--")
     cache_path = _DEFAULT_DECODER_CACHE / sanitized
-    if not cache_path.is_dir():
-        from scripts.bundle.convert_decoder import convert_decoder
-
-        typer.echo(f"No cached decoder for {projector}; running convert-decoder...")
-        convert_decoder(checkpoint=projector, out_dir=cache_path, q_bits=8)
+    if cache_path.is_dir():
+        typer.echo(f"Removing stale cached decoder at {cache_path}...")
+        shutil.rmtree(cache_path)
+    typer.echo(f"Running convert-decoder for {projector}...")
+    convert_decoder(checkpoint=projector, out_dir=cache_path, q_bits=8)
     return str(cache_path)
 
 
