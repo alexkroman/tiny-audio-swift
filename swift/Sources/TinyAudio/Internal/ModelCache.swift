@@ -87,12 +87,8 @@ enum ModelCache {
     return true
   }
 
-  /// Filename of the sidecar that records the HuggingFace commit SHA we
-  /// last downloaded for a given repo's snapshot directory.
   static let commitSidecarFilename = ".commit_hash"
 
-  /// Returns the trimmed contents of the `.commit_hash` sidecar in `dir`,
-  /// or `nil` if the file is missing or empty.
   static func readLocalCommit(in dir: URL) -> String? {
     let url = dir.appendingPathComponent(commitSidecarFilename)
     guard let data = try? Data(contentsOf: url),
@@ -102,8 +98,6 @@ enum ModelCache {
     return trimmed.isEmpty ? nil : trimmed
   }
 
-  /// Writes `sha` to the `.commit_hash` sidecar in `dir`, overwriting any
-  /// existing file. Throws on filesystem error.
   static func writeLocalCommit(_ sha: String, in dir: URL) throws {
     let url = dir.appendingPathComponent(commitSidecarFilename)
     try sha.write(to: url, atomically: true, encoding: .utf8)
