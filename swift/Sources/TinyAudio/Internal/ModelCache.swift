@@ -87,6 +87,28 @@ enum ModelCache {
     return true
   }
 
+  /// Filename of the sidecar that records the HuggingFace commit SHA we
+  /// last downloaded for a given repo's snapshot directory.
+  static let commitSidecarFilename = ".commit_hash"
+
+  /// Returns the trimmed contents of the `.commit_hash` sidecar in `dir`,
+  /// or `nil` if the file is missing or empty.
+  static func readLocalCommit(in dir: URL) -> String? {
+    let url = dir.appendingPathComponent(commitSidecarFilename)
+    guard let data = try? Data(contentsOf: url),
+      let raw = String(data: data, encoding: .utf8)
+    else { return nil }
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+
+  /// Writes `sha` to the `.commit_hash` sidecar in `dir`, overwriting any
+  /// existing file. Throws on filesystem error.
+  static func writeLocalCommit(_ sha: String, in dir: URL) throws {
+    let url = dir.appendingPathComponent(commitSidecarFilename)
+    try sha.write(to: url, atomically: true, encoding: .utf8)
+  }
+
   /// Ensure `expectedFiles` exist in the snapshot directory for `repo`.
   /// If any are missing, fetch them via `hub.snapshot(...)`. Returns the
   /// on-disk snapshot directory.
