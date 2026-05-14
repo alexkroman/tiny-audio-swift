@@ -1,15 +1,10 @@
 import Foundation
 import Hub
 
-/// Narrow seam over the two HubApi operations TinyAudio uses for model
-/// downloads. Lets tests substitute a stub without touching the network.
+/// Seam over HubApi so tests can stub network calls.
 internal protocol ModelHub: Sendable {
-  /// Returns the upstream `main`-branch commit SHA for `repo`, or throws
-  /// if the network call fails. Used to detect stale local caches.
   func upstreamCommit(repo: String) async throws -> String?
 
-  /// Download `expectedFiles` from `repo` into the cache, reporting progress
-  /// via `progress`. Returns the on-disk directory containing the snapshot.
   func snapshot(
     repo: String,
     expectedFiles: [String],
@@ -17,18 +12,14 @@ internal protocol ModelHub: Sendable {
   ) async throws -> URL
 }
 
-/// Production `ModelHub` backed by `HubApi`. The instance holds its own
-/// `HubApi` configured with `ModelCache.cacheRoot()` so the snapshot lands
-/// in the canonical layout.
 internal struct LiveModelHub: ModelHub {
   func upstreamCommit(repo: String) async throws -> String? {
-    let hub = HubApi(downloadBase: try ModelCache.cacheRoot())
-    let metadata = try await hub.getFileMetadata(
-      from: Hub.Repo(id: repo, type: .models),
-      revision: "main",
-      matching: ["config.json"]
-    )
-    return metadata.first?.commitHash
+    // Single HEAD via the URL-form helper avoids the listing+HEAD round trip
+    // that `getFileMetadata(from:matching:)` would do.
+    guard
+      let url = URL(string: "https://huggingface.co/\(repo)/resolve/main/config.json")
+    else { return nil }
+    return try await Hub.getFileMetadata(fileURL: url).commitHash
   }
 
   func snapshot(
@@ -103,10 +94,6 @@ enum ModelCache {
     try sha.write(to: url, atomically: true, encoding: .utf8)
   }
 
-  static func fetchUpstreamCommit(repo: String, hub: ModelHub) async -> String? {
-    return try? await hub.upstreamCommit(repo: repo)
-  }
-
   static func ensureDownloaded(
     repo: String,
     expectedFiles: [String],
@@ -116,7 +103,7 @@ enum ModelCache {
     let target = try snapshotURL(for: repo)
     progress?(.checking)
     let localFilesPresent = hasAllFiles(expectedFiles, in: target)
-    let upstream = await fetchUpstreamCommit(repo: repo, hub: hub)
+    let upstream = try? await hub.upstreamCommit(repo: repo)
 
     if localFilesPresent {
       let local = readLocalCommit(in: target)
