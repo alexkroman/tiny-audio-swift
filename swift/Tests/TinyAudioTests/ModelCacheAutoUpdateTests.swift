@@ -65,11 +65,9 @@ private final class StubModelHub: ModelHub, @unchecked Sendable {
   var snapshotFiles: [String] = []
   var snapshotError: (any Error)?
 
-  private(set) var upstreamCommitCallCount = 0
   private(set) var snapshotCallCount = 0
 
   func upstreamCommit(repo: String) async throws -> String? {
-    upstreamCommitCallCount += 1
     if let e = upstreamCommitError { throw e }
     return upstreamCommitToReturn
   }
