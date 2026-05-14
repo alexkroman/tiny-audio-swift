@@ -1,6 +1,50 @@
 import Foundation
 import Hub
 
+/// Narrow seam over the two HubApi operations TinyAudio uses for model
+/// downloads. Lets tests substitute a stub without touching the network.
+internal protocol ModelHub: Sendable {
+  /// Returns the upstream `main`-branch commit SHA for `repo`, or throws
+  /// if the network call fails. Used to detect stale local caches.
+  func upstreamCommit(repo: String) async throws -> String?
+
+  /// Download `expectedFiles` from `repo` into the cache, reporting progress
+  /// via `progress`. Returns the on-disk directory containing the snapshot.
+  func snapshot(
+    repo: String,
+    expectedFiles: [String],
+    progress: @escaping @Sendable (Double) -> Void
+  ) async throws -> URL
+}
+
+/// Production `ModelHub` backed by `HubApi`. The instance holds its own
+/// `HubApi` configured with `ModelCache.cacheRoot()` so the snapshot lands
+/// in the canonical layout.
+internal struct LiveModelHub: ModelHub {
+  func upstreamCommit(repo: String) async throws -> String? {
+    let hub = HubApi(downloadBase: try ModelCache.cacheRoot())
+    let metadata = try await hub.getFileMetadata(
+      from: Hub.Repo(id: repo, type: .models),
+      revision: "main",
+      matching: ["config.json"]
+    )
+    return metadata.first?.commitHash
+  }
+
+  func snapshot(
+    repo: String,
+    expectedFiles: [String],
+    progress: @escaping @Sendable (Double) -> Void
+  ) async throws -> URL {
+    let hub = HubApi(downloadBase: try ModelCache.cacheRoot())
+    return try await hub.snapshot(
+      from: Hub.Repo(id: repo, type: .models),
+      matching: expectedFiles,
+      progressHandler: { p in progress(p.fractionCompleted) }
+    )
+  }
+}
+
 /// Internal helpers for resolving per-repo cache directories and verifying
 /// which files are already on disk. Network logic lives in `ensureDownloaded`.
 ///
@@ -44,25 +88,24 @@ enum ModelCache {
   }
 
   /// Ensure `expectedFiles` exist in the snapshot directory for `repo`.
-  /// If any are missing, fetch them from the HF repo via `HubApi.snapshot(...)`
-  /// (HubApi resumes partial downloads automatically across runs).
-  /// Returns the on-disk snapshot directory.
+  /// If any are missing, fetch them via `hub.snapshot(...)`. Returns the
+  /// on-disk snapshot directory.
   static func ensureDownloaded(
     repo: String,
     expectedFiles: [String],
-    progress: (@Sendable (LoadProgress) -> Void)?
+    progress: (@Sendable (LoadProgress) -> Void)?,
+    hub: ModelHub = LiveModelHub()
   ) async throws -> URL {
     let target = try snapshotURL(for: repo)
     progress?(.checking)
     if hasAllFiles(expectedFiles, in: target) { return target }
 
-    let hub = HubApi(downloadBase: try cacheRoot())
     do {
       let result = try await hub.snapshot(
-        from: Hub.Repo(id: repo, type: .models),
-        matching: expectedFiles,
-        progressHandler: { p in
-          progress?(.downloading(fractionCompleted: p.fractionCompleted))
+        repo: repo,
+        expectedFiles: expectedFiles,
+        progress: { fraction in
+          progress?(.downloading(fractionCompleted: fraction))
         }
       )
       guard hasAllFiles(expectedFiles, in: result) else {
