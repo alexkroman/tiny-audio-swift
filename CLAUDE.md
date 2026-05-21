@@ -52,7 +52,6 @@ Several test suites download large models or hit hardware and are skipped by def
 ```bash
 poetry install
 poetry run python -m scripts.bundle.cli build-bundle --projector mazesmazes/tiny-audio
-poetry run python -m scripts.bundle.cli convert-decoder --checkpoint <repo-or-path>
 poetry run python -m scripts.bundle.cli push-bundle --projector <repo>
 ```
 

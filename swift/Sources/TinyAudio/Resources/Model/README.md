@@ -14,10 +14,10 @@ building the Swift package:
 
 ```bash
 poetry install
-poetry run ta mlx build-bundle --projector mazesmazes/tiny-audio
+poetry run python -m scripts.bundle.cli build-bundle --projector mazesmazes/tiny-audio
 ```
 
-`build-bundle` pulls the projector + (when needed) auto-runs
-`convert-decoder` to populate this directory. SwiftPM's
-`.copy("Resources/Model")` rule in `Package.swift` then ships the bundle
-into the SDK at build time.
+`build-bundle` pulls the projector and assembles the decoder
+automatically (converting fine-tuned LM weights to MLX when needed).
+SwiftPM's `.copy("Resources/Model")` rule in `Package.swift` then ships
+the bundle into the SDK at build time.

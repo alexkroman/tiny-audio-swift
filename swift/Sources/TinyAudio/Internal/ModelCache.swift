@@ -1,6 +1,41 @@
 import Foundation
 import Hub
 
+/// Seam over HubApi so tests can stub network calls.
+internal protocol ModelHub: Sendable {
+  func upstreamCommit(repo: String) async throws -> String?
+
+  func snapshot(
+    repo: String,
+    expectedFiles: [String],
+    progress: @escaping @Sendable (Double) -> Void
+  ) async throws -> URL
+}
+
+internal struct LiveModelHub: ModelHub {
+  func upstreamCommit(repo: String) async throws -> String? {
+    // Single HEAD via the URL-form helper avoids the listing+HEAD round trip
+    // that `getFileMetadata(from:matching:)` would do.
+    guard
+      let url = URL(string: "https://huggingface.co/\(repo)/resolve/main/config.json")
+    else { return nil }
+    return try await Hub.getFileMetadata(fileURL: url).commitHash
+  }
+
+  func snapshot(
+    repo: String,
+    expectedFiles: [String],
+    progress: @escaping @Sendable (Double) -> Void
+  ) async throws -> URL {
+    let hub = HubApi(downloadBase: try ModelCache.cacheRoot())
+    return try await hub.snapshot(
+      from: Hub.Repo(id: repo, type: .models),
+      matching: expectedFiles,
+      progressHandler: { p in progress(p.fractionCompleted) }
+    )
+  }
+}
+
 /// Internal helpers for resolving per-repo cache directories and verifying
 /// which files are already on disk. Network logic lives in `ensureDownloaded`.
 ///
@@ -43,26 +78,53 @@ enum ModelCache {
     return true
   }
 
-  /// Ensure `expectedFiles` exist in the snapshot directory for `repo`.
-  /// If any are missing, fetch them from the HF repo via `HubApi.snapshot(...)`
-  /// (HubApi resumes partial downloads automatically across runs).
-  /// Returns the on-disk snapshot directory.
+  static let commitSidecarFilename = ".commit_hash"
+
+  static func readLocalCommit(in dir: URL) -> String? {
+    let url = dir.appendingPathComponent(commitSidecarFilename)
+    guard let data = try? Data(contentsOf: url),
+      let raw = String(data: data, encoding: .utf8)
+    else { return nil }
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
+  }
+
+  static func writeLocalCommit(_ sha: String, in dir: URL) throws {
+    let url = dir.appendingPathComponent(commitSidecarFilename)
+    try sha.write(to: url, atomically: true, encoding: .utf8)
+  }
+
   static func ensureDownloaded(
     repo: String,
     expectedFiles: [String],
-    progress: (@Sendable (LoadProgress) -> Void)?
+    progress: (@Sendable (LoadProgress) -> Void)?,
+    hub: ModelHub = LiveModelHub()
   ) async throws -> URL {
     let target = try snapshotURL(for: repo)
     progress?(.checking)
-    if hasAllFiles(expectedFiles, in: target) { return target }
+    let localFilesPresent = hasAllFiles(expectedFiles, in: target)
+    let upstream = try? await hub.upstreamCommit(repo: repo)
 
-    let hub = HubApi(downloadBase: try cacheRoot())
+    if localFilesPresent {
+      let local = readLocalCommit(in: target)
+      if local == nil {
+        if let upstream { try? writeLocalCommit(upstream, in: target) }
+        return target
+      }
+      if upstream == nil {
+        return target
+      }
+      if local == upstream {
+        return target
+      }
+    }
+
     do {
       let result = try await hub.snapshot(
-        from: Hub.Repo(id: repo, type: .models),
-        matching: expectedFiles,
-        progressHandler: { p in
-          progress?(.downloading(fractionCompleted: p.fractionCompleted))
+        repo: repo,
+        expectedFiles: expectedFiles,
+        progress: { fraction in
+          progress?(.downloading(fractionCompleted: fraction))
         }
       )
       guard hasAllFiles(expectedFiles, in: result) else {
@@ -77,6 +139,9 @@ enum ModelCache {
               ])
           )
         )
+      }
+      if let upstream {
+        try? writeLocalCommit(upstream, in: result)
       }
       return result
     } catch let e as TinyAudioError {
